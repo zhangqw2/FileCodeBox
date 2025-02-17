@@ -78,14 +78,14 @@ class FileService:
         )
         path, suffix, prefix, uuid_file_name, save_path = await get_file_path_name(item)
         # 覆盖原始文件名
-        # save_path = f"{path}/{item.fileName}"
+        save_path = f"{path}/{item.fileName}"
         await self.file_storage.save_local_to_share_file(text, save_path)
 
         await FileCodes.create(
             code=code,
             prefix=prefix,
             suffix=suffix,
-            uuid_file_name=uuid_file_name,
+            uuid_file_name=item.fileName,
             file_path=path,
             size=local_file.size,
             expired_at=expired_at,
