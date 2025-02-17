@@ -9,6 +9,7 @@ class ShareItem(BaseModel):
     expire_value: int
     expire_style: str = "day"
     filename: str
+    fileName: str
 
 
 class DeleteItem(BaseModel):

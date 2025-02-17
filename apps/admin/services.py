@@ -9,7 +9,7 @@ from apps.base.models import FileCodes, KeyValue
 from apps.base.utils import get_expire_info, get_file_path_name
 from fastapi import HTTPException
 from core.settings import data_root
-
+from pathlib import Path
 
 class FileService:
     def __init__(self):
@@ -77,7 +77,8 @@ class FileService:
             item.expire_value, item.expire_style
         )
         path, suffix, prefix, uuid_file_name, save_path = await get_file_path_name(item)
-
+        # 覆盖原始文件名
+        # save_path = f"{path}/{item.fileName}"
         await self.file_storage.save_local_to_share_file(text, save_path)
 
         await FileCodes.create(
@@ -134,11 +135,11 @@ class ConfigService:
 class LocalFileService:
     async def list_files(self):
         files = []
-        if not os.path.exists(data_root / "local"):
-            os.makedirs(data_root / "local")
-        for root, _, filenames in os.walk(data_root / "local"):
+        if not os.path.exists(Path(settings.local_path) / ""):
+            os.makedirs(Path(settings.local_path)/ "")
+        for root, _, filenames in os.walk(Path(settings.local_path)/ ""):
             for filename in filenames:
-                relative_path = os.path.relpath(os.path.join(root, filename), data_root / "local")
+                relative_path = os.path.relpath(os.path.join(root, filename), Path(settings.local_path)/ "")
                 files.append(LocalFileClass(relative_path))
         return files
 
@@ -153,10 +154,11 @@ class LocalFileService:
 class LocalFileClass:
     def __init__(self, file):
         self.file = file
-        self.path = data_root / "local" / file
+        self.path = Path(settings.local_path)  / file
         self.ctime = time.strftime(
             "%Y-%m-%d %H:%M:%S", time.localtime(os.path.getctime(self.path))
         )
+        self.fileName = os.path.basename(Path(settings.local_path)  / file)
         self.size = os.path.getsize(self.path)
         self.owner = self.get_owner()  # 添加此行
 
