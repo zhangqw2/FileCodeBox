@@ -36,7 +36,11 @@ class FileStorageInterface:
         保存文件
         """
         raise NotImplementedError
-
+    async def save_local_to_share_file(self, file: UploadFile, save_path: str):
+        """
+        同步本地文件到共享目录
+        """
+        raise NotImplementedError
     async def delete_file(self, file_code: FileCodes):
         """
         删除文件
@@ -79,6 +83,12 @@ class SystemFileStorage(FileStorageInterface):
         if not save_path.parent.exists():
             save_path.parent.mkdir(parents=True)
         await asyncio.to_thread(self._save, file.file, save_path)
+
+    async def save_local_to_share_file(self, file: UploadFile, save_path: str):
+        save_path = self.root_path / save_path
+        if not save_path.parent.exists():
+            save_path.parent.mkdir(parents=True)
+        await asyncio.to_thread(self._save, file, save_path)
 
     async def delete_file(self, file_code: FileCodes):
         save_path = self.root_path / await file_code.get_file_path()

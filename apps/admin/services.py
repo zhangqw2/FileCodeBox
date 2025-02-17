@@ -1,5 +1,6 @@
 import os
 import time
+import pwd  # 添加此行
 
 from core.response import APIResponse
 from core.storage import FileStorageInterface, storages
@@ -66,7 +67,35 @@ class FileService:
             "name": local_file.file,
         }
 
+    async def share_local_to_share_file(self, item):
+        local_file = LocalFileClass(item.filename)
+        if not await local_file.exists():
+            raise HTTPException(status_code=404, detail="文件不存在")
 
+        text = await local_file.read()
+        expired_at, expired_count, used_count, code = await get_expire_info(
+            item.expire_value, item.expire_style
+        )
+        path, suffix, prefix, uuid_file_name, save_path = await get_file_path_name(item)
+
+        await self.file_storage.save_local_to_share_file(text, save_path)
+
+        await FileCodes.create(
+            code=code,
+            prefix=prefix,
+            suffix=suffix,
+            uuid_file_name=uuid_file_name,
+            file_path=path,
+            size=local_file.size,
+            expired_at=expired_at,
+            expired_count=expired_count,
+            used_count=used_count,
+        )
+
+        return {
+            "code": code,
+            "name": local_file.file,
+        }
 class ConfigService:
     def get_config(self):
         return settings.items()
@@ -107,8 +136,10 @@ class LocalFileService:
         files = []
         if not os.path.exists(data_root / "local"):
             os.makedirs(data_root / "local")
-        for file in os.listdir(data_root / "local"):
-            files.append(LocalFileClass(file))
+        for root, _, filenames in os.walk(data_root / "local"):
+            for filename in filenames:
+                relative_path = os.path.relpath(os.path.join(root, filename), data_root / "local")
+                files.append(LocalFileClass(relative_path))
         return files
 
     async def delete_file(self, filename: str):
@@ -127,6 +158,10 @@ class LocalFileClass:
             "%Y-%m-%d %H:%M:%S", time.localtime(os.path.getctime(self.path))
         )
         self.size = os.path.getsize(self.path)
+        self.owner = self.get_owner()  # 添加此行
+
+    def get_owner(self):
+        return pwd.getpwuid(os.stat(self.path).st_uid).pw_name  # 添加此行
 
     async def read(self):
         return open(self.path, "rb")

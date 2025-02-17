@@ -144,5 +144,5 @@ async def share_local_file(
         file_service: FileService = Depends(get_file_service),
         admin: bool = Depends(admin_required),
 ):
-    share_info = await file_service.share_local_file(item)
+    share_info = await file_service.share_local_to_share_file(item)
     return APIResponse(detail=share_info)
