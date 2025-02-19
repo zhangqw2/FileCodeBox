@@ -135,12 +135,14 @@ class ConfigService:
 class LocalFileService:
     async def list_files(self):
         files = []
+        allowed_formats = settings.local_file_format.split(",")  # 添加此行
         if not os.path.exists(Path(settings.local_path) / ""):
-            os.makedirs(Path(settings.local_path)/ "")
-        for root, _, filenames in os.walk(Path(settings.local_path)/ ""):
+            os.makedirs(Path(settings.local_path) / "")
+        for root, _, filenames in os.walk(Path(settings.local_path) / ""):
             for filename in filenames:
-                relative_path = os.path.relpath(os.path.join(root, filename), Path(settings.local_path)/ "")
-                files.append(LocalFileClass(relative_path))
+                if any(filename.endswith(ext) for ext in allowed_formats):  # 添加此行
+                    relative_path = os.path.relpath(os.path.join(root, filename), Path(settings.local_path) / "")
+                    files.append(LocalFileClass(relative_path))
         return files
 
     async def delete_file(self, filename: str):
@@ -163,7 +165,7 @@ class LocalFileClass:
         self.owner = self.get_owner()  # 添加此行
 
     def get_owner(self):
-        return pwd.getpwuid(os.stat(self.path).st_uid).pw_name  # 添加此行
+        return "默认用户"  # 添加此行
 
     async def read(self):
         return open(self.path, "rb")

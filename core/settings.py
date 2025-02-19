@@ -13,7 +13,8 @@ if not data_root.exists():
 DEFAULT_CONFIG = {
     "file_storage": "local",
     "storage_path": "",
-    "local_path": "",
+    "local_path": "/app/locals",
+    "local_file_format":"pdf,xlsx,docx,txt,zip,rar,7z,doc,xls,jpg,jpeg,png,gif",
     "name": "文件快递柜 - FileCodeBox",
     "description": "开箱即用的文件快传系统",
     "notify_title": "系统通知",
