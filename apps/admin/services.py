@@ -1,7 +1,8 @@
 import os
 import time
 import pwd  # 添加此行
-
+from typing import Tuple, List
+import glob
 from core.response import APIResponse
 from core.storage import FileStorageInterface, storages
 from core.settings import settings
@@ -133,17 +134,68 @@ class ConfigService:
 
 
 class LocalFileService:
-    async def list_files(self):
-        files = []
-        allowed_formats = settings.local_file_format.split(",")  # 添加此行
-        if not os.path.exists(Path(settings.local_path) / ""):
-            os.makedirs(Path(settings.local_path) / "")
-        for root, _, filenames in os.walk(Path(settings.local_path) / ""):
-            for filename in filenames:
-                if any(filename.endswith(ext) for ext in allowed_formats):  # 添加此行
-                    relative_path = os.path.relpath(os.path.join(root, filename), Path(settings.local_path) / "")
-                    files.append(LocalFileClass(relative_path))
-        return files
+    async def find_files_by_name(
+            self,
+            filename: str,
+            page: int = 1,
+            size: int = 10
+    ) -> Tuple[List, int]:
+        base_path = Path(settings.local_path)
+        # 处理扩展名（移除点号并转小写）
+        allowed_extensions = {
+            ext.lower().lstrip('.')
+            for ext in settings.local_file_format.split(",")
+        }
+        base_path.mkdir(parents=True, exist_ok=True)
+
+        matched_files = []
+        # 构造跨平台兼容的路径模式
+        pattern = str(base_path / "**" / filename)
+
+        for full_path in glob.iglob(pattern, recursive=True):
+            # 提取文件扩展名（移除点号并转小写）
+            _, ext = os.path.splitext(full_path)
+            file_ext = ext.lstrip('.').lower()
+            if file_ext not in allowed_extensions:
+                continue
+
+            # 精确匹配文件名（不包含路径）
+            file_name = os.path.basename(full_path)
+            if file_name != filename:
+                continue
+
+            relative_path = os.path.relpath(full_path, base_path)
+            matched_files.append(LocalFileClass(relative_path))
+
+        total = len(matched_files)
+        start = (page - 1) * size
+        end = start + size
+        return matched_files[start:end], total
+
+    async def list_files(self, page: int = 1, size: int = 6,keyword: str = ""):
+        base_path = Path(settings.local_path)
+        allowed_extensions = tuple(settings.local_file_format.split(","))
+        base_path.mkdir(parents=True, exist_ok=True)
+
+        all_files = []
+        for root, _, filenames in os.walk(base_path):
+            for f in filenames:
+                if not f.endswith(allowed_extensions):  # 保留扩展名过滤
+                    continue
+                file_path = os.path.relpath(os.path.join(root, f), base_path)
+
+                # 新增关键字过滤逻辑
+                if keyword and keyword.lower() not in file_path.lower():
+                    continue
+
+                all_files.append(LocalFileClass(file_path))
+
+        total = len(all_files)
+        start = (page - 1) * size
+        end = start + size
+        paginated_files = all_files[start:end]
+
+        return paginated_files, total
 
     async def delete_file(self, filename: str):
         file = LocalFileClass(filename)

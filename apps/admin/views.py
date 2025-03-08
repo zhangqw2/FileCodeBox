@@ -121,11 +121,39 @@ async def file_download(
 
 @admin_api.get("/local/lists")
 async def get_local_lists(
+        page: int = 1,
+        size: int = 6,
+        search: str = "",
         local_file_service: LocalFileService = Depends(get_local_file_service),
         admin: bool = Depends(admin_required),
 ):
-    files = await local_file_service.list_files()
-    return APIResponse(detail=files)
+    files, total = await local_file_service.list_files(page, size,search)
+    return APIResponse(
+        detail={
+            "page": page,
+            "size": size,
+            "total": total,
+            "data": files
+        }
+    )
+@admin_api.get("/local/find")
+async def find_local_file(
+    search: str,
+    page: int = 1,
+    size: int = 10,
+    local_file_service: LocalFileService = Depends(get_local_file_service),
+    admin: bool = Depends(admin_required),
+):
+    files, total = await local_file_service.find_files_by_name(search, page, size)
+    return APIResponse(
+        detail={
+            "page": page,
+            "size": size,
+            "total": total,
+            "data": files,
+            "keyword": search
+        }
+    )
 
 
 @admin_api.delete("/local/delete")
