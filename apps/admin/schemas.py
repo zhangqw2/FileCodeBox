@@ -1,3 +1,7 @@
+'''
+author: zhangquanwei
+Date: 2025-03-07 22:32:24
+'''
 import datetime
 from typing import Optional
 from pydantic import BaseModel
@@ -19,6 +23,7 @@ class DeleteItem(BaseModel):
 
 
 class LoginData(BaseModel):
+    account: str
     password: str
 
 

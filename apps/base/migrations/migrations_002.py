@@ -1,3 +1,7 @@
+'''
+author: zhangquanwei
+Date: 2025-03-07 22:32:24
+'''
 from tortoise import connections
 
 
@@ -5,11 +9,11 @@ async def create_upload_chunk_and_update_file_codes_table():
     conn = connections.get("default")
     await conn.execute_script(
         """
-        ALTER TABLE "filecodes" ADD "file_hash" VARCHAR(128);
-        ALTER TABLE "filecodes" ADD "is_chunked" BOOL NOT NULL DEFAULT False;
-        ALTER TABLE "filecodes" ADD "upload_id" VARCHAR(128);
+        ALTER TABLE "filecodes" ADD COLUMN "file_hash" VARCHAR(128);
+        ALTER TABLE "filecodes" ADD COLUMN "is_chunked" BOOLEAN NOT NULL DEFAULT FALSE;
+        ALTER TABLE "filecodes" ADD COLUMN "upload_id" VARCHAR(128);
         CREATE TABLE "uploadchunk" (
-            id  INTEGER  not null   primary key autoincrement,
+            id SERIAL PRIMARY KEY,
             "upload_id" VARCHAR(36) NOT NULL,
             "chunk_index" INT NOT NULL,
             "chunk_hash" VARCHAR(128) NOT NULL,
@@ -18,7 +22,7 @@ async def create_upload_chunk_and_update_file_codes_table():
             "chunk_size" INT NOT NULL,
             "created_at" TIMESTAMPTZ NOT NULL,
             "file_name" VARCHAR(255) NOT NULL,
-            "completed" BOOL NOT NULL
+            "completed" BOOLEAN NOT NULL
         );
     """
     )

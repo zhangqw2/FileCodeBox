@@ -65,6 +65,42 @@ def verify_token(token: str) -> dict:
         raise ValueError(f"token验证失败: {str(e)}")
 
 
+def extract_data_from_token(token: str) -> dict:
+    """
+    从JWT token中解析出数据
+    :param token: JWT token
+    :return: 解码后的数据负载
+    """
+    try:
+        payload = verify_token(token)
+        return payload
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=f"token解析失败: {str(e)}")
+
+
+async def get_current_user(
+    authorization: str = Header(default=None, description="Bearer token"), request: Request = None
+) -> dict:
+    try:
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(401, detail="无效的认证头")
+
+        token = authorization.split(" ")[1]
+        payload = verify_token(token)
+        account = payload.get("account")
+        is_admin = payload.get("is_admin", False)
+        deployment = payload.get("deployment")
+        role_code = payload.get("role_code")
+        role_name = payload.get("role_name")
+        name = payload.get("name")
+
+        if not account:
+            raise HTTPException(401, detail="token缺少account字段")
+
+        return {"account": account,"name": name, "is_admin": is_admin, "deployment": deployment, "role_code": role_code, "role_name": role_name}
+    except ValueError as e:
+        raise HTTPException(401, detail=f"token验证失败: {str(e)}")
+
 async def admin_required(
     authorization: str = Header(default=None), request: Request = None
 ):

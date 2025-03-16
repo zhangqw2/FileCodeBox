@@ -3,6 +3,7 @@
 # @File    : views.py
 # @Software: PyCharm
 import datetime
+from pyexpat.errors import messages
 
 from fastapi import APIRouter, Depends, HTTPException
 from apps.admin.services import FileService, ConfigService, LocalFileService
@@ -10,26 +11,76 @@ from apps.admin.dependencies import (
     admin_required,
     get_file_service,
     get_config_service,
-    get_local_file_service,
+    get_local_file_service, get_current_user,
 )
 from apps.admin.schemas import IDData, ShareItem, DeleteItem, LoginData, UpdateFileData
 from core.response import APIResponse
 from apps.base.models import FileCodes, KeyValue
 from apps.admin.dependencies import create_token
 from core.settings import settings
+from system.user.services import get_password_by_account, update_is_login_by_account, get_user_by_account
+from sqlmodel import Session
 
 admin_api = APIRouter(prefix="/admin", tags=["管理"])
 
-
+def verify_user_account(account: str, password: str):
+    with Session() as db:
+        stored_password = get_password_by_account(db, account)
+        if stored_password is None:
+            return False
+        return stored_password == password
+def update_is_login(account: str, is_login: bool):
+    with Session() as db:
+        update_is_login_by_account(db, account, is_login)
+def get_user_account(account: str):
+    with Session() as db:
+        return get_user_by_account(db, account)
+      
 @admin_api.post("/login")
 async def login(data: LoginData):
-    # 验证管理员密码
-    if data.password != settings.admin_token:
-        raise HTTPException(status_code=401, detail="密码错误")
+    # 验证管理员账号和密码
+    print("admin_account:", settings.admin_account, "admin_token:", settings.admin_token)
+    print(data.account == settings.admin_account)
+    print(data.password == settings.admin_token)
+    if data.account == settings.admin_account and data.password == settings.admin_token:
+        is_admin = True
+        # 生成包含身份信息的token
+        token_data = {
+            "is_admin": is_admin,
+            "account": "admin" ,
+            "name": "admin" ,
+            "role_code": "admin" ,
+            "role_name": "管理员" ,
+            "deployment": ""
+        }
+        token = create_token(token_data)
+        return APIResponse(detail={"token": token, "token_type": "Bearer"})
+    else:
+        # 验证其他账号和密码（假设有其他账号验证逻辑）
+        if not verify_user_account(data.account, data.password):
+            raise HTTPException(status_code=401, detail="账号或密码错误")
+        is_admin = False
+        # 更新用户登录状态
+        update_is_login(data.account, True)
+        user = get_user_account(data.account)
+        if user is None:
+          raise HTTPException(status_code=401, detail="用户信息不存在")
+          # 生成包含身份信息的token
+        token_data = {
+              "is_admin": is_admin,
+              "account": user.account,
+              "role_code": user.role_code,
+              "role_name": user.role_name,
+              "deployment": user.depolyment,
+              "name": user.name
+          }
+        token = create_token(token_data)
+        return APIResponse(detail={"token": token, "token_type": "Bearer"})
 
-    # 生成包含管理员身份的token
-    token = create_token({"is_admin": True})
-    return APIResponse(detail={"token": token, "token_type": "Bearer"})
+
+@admin_api.post("/loginout")
+async def logout(current_user=Depends(get_current_user)):
+    return APIResponse(code=200,message='登出成功',detail=current_user)
 
 
 @admin_api.get("/dashboard")

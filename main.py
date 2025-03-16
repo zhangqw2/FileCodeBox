@@ -25,6 +25,10 @@ from core.logger import logger
 from contextlib import asynccontextmanager
 from tortoise import Tortoise
 
+from system.user.views import user_api
+from system.role.views import role_api
+from system.flow.views import flow_api
+from system.approval.views import approval_api
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -84,10 +88,10 @@ app.add_middleware(
 register_tortoise(
     app,
     config={
-        "connections": {"default": f"sqlite://{data_root}/filecodebox.db"},
+        "connections": {"default": f"postgres://postgres:postgres@localhost:5432/postgres"},
         "apps": {
             "models": {
-                "models": ["apps.base.models"],
+                "models": ["apps.base.models","system.user.models"],
                 "default_connection": "default",
             },
         },
@@ -99,6 +103,10 @@ register_tortoise(
 app.include_router(share_api)
 app.include_router(chunk_api)
 app.include_router(admin_api)
+app.include_router(user_api)
+app.include_router(role_api)
+app.include_router(flow_api)
+app.include_router(approval_api)
 
 
 @app.exception_handler(404)

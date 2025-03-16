@@ -1,3 +1,7 @@
+'''
+author: zhangquanwei
+Date: 2025-03-07 22:32:24
+'''
 import glob
 import importlib
 import os
@@ -12,20 +16,36 @@ async def init_db():
     try:
         # 使用正确的Tortoise初始化配置格式
         db_config = {
-            "db_url": f"sqlite://{data_root}/filecodebox.db",
-            "modules": {"models": ["apps.base.models"]},
+            "connections": {
+                "default": {
+                    "engine": "tortoise.backends.asyncpg",
+                    "credentials": {
+                        "host": "localhost",
+                        "port": "5432",
+                        "user": "postgres",
+                        "password": "postgres",
+                        "database": "postgres"
+                    }
+                }
+            },
+            "apps": {
+                "models": {
+                    "models": ["apps.base.models","system.user.models"],
+                    "default_connection": "default",
+                }
+            },
             "use_tz": False,
             "timezone": "Asia/Shanghai"
         }
 
-        await Tortoise.init(**db_config)
+        await Tortoise.init(config=db_config)
 
         # 创建migrations表
         await Tortoise.get_connection("default").execute_script("""
             CREATE TABLE IF NOT EXISTS migrates (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 migration_file VARCHAR(255) NOT NULL UNIQUE,
-                executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                executed_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
             )
         """)
 
@@ -55,7 +75,7 @@ async def execute_migrations():
 
             # 检查是否已执行
             executed = await Tortoise.get_connection("default").execute_query(
-                "SELECT id FROM migrates WHERE migration_file = ?", [file_name]
+                "SELECT id FROM migrates WHERE migration_file = $1", [file_name]
             )
 
             if not executed[1]:
@@ -68,7 +88,7 @@ async def execute_migrations():
                         await migration_module.migrate()
                         # 记录执行
                         await Tortoise.get_connection("default").execute_query(
-                            "INSERT INTO migrates (migration_file) VALUES (?)",
+                            "INSERT INTO migrates (migration_file) VALUES ($1)",
                             [file_name]
                         )
                         logger.info(f"迁移完成: {file_name}")
